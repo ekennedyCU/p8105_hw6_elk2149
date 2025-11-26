@@ -1,0 +1,14 @@
+---
+title: "p8105_hw6_elk2149"
+author: "Evan Kennedy"
+date: "2025-11-26"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+***Problem 1***
+***Problem 2***
+***Problem 3***
