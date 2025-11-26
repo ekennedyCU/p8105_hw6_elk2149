@@ -9,6 +9,7 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(janitor)
+library(broom)
 ```
 
 ***Problem 1***
@@ -34,12 +35,40 @@ df_homicide = readr::read_csv(url) |>
       "Kansas City, MO",
       "Tulsa, AL"
     ),
-    # 5) Keep only White / Black victims
+    # Keep only White / Black victims
     victim_race %in% c("White", "Black")
   )
 
+#Log Regression for Baltimore
 
+baltimore_df = df_homicide |>
+  filter(city_state == "Baltimore, MD") |>
+  mutate(
+    # sex and race factors, Female as reference
+    victim_sex  = relevel(factor(victim_sex), ref = "Female"),
+    victim_race = factor(victim_race)
+  )
+
+#log regression
+baltimore_logreg = glm(
+  solved ~ victim_age + victim_sex + victim_race,
+  data   = baltimore_df,
+  family = binomial()
+)
+
+#get ORs and 95% CI
+baltimore_logregfit |>
+  tidy(conf.int = TRUE, conf.level = 0.95, exponentiate = TRUE)
+
+#OR for male vs female
+baltimore_male_or = baltimore_logregfit |>
+  filter(term == "victim_sexMale") |>
+  select(term, estimate, conf.low, conf.high, p.value)
+
+baltimore_male_or
 ```
+
+The adjusted odds ratio for a homicide being solved comparing male to female victims, holding age and race constant, was OR = 0.426 (95% CI 0.324, 0.558)
 
 ***Problem 2***
 ***Problem 3***
