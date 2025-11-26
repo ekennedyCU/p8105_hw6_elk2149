@@ -7,8 +7,39 @@ output: github_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
 ```
 
 ***Problem 1***
+```{r}
+url = "https://raw.githubusercontent.com/washingtonpost/data-homicides/refs/heads/master/homicide-data.csv"
+df_homicide = readr::read_csv(url) |> 
+  clean_names() |>
+  mutate(
+    # Make city_state variable
+    city_state = str_c(city, state, sep = ", "),
+    
+    # Binary solved variable
+    solved = disposition == "Closed by arrest",
+    
+    # Make sure age is numeric
+    victim_age = as.numeric(victim_age)
+  ) |>
+  # Drop specific cities
+  filter(
+    !city_state %in% c(
+      "Dallas, TX",
+      "Phoenix, AZ",
+      "Kansas City, MO",
+      "Tulsa, AL"
+    ),
+    # 5) Keep only White / Black victims
+    victim_race %in% c("White", "Black")
+  )
+
+
+```
+
 ***Problem 2***
 ***Problem 3***
