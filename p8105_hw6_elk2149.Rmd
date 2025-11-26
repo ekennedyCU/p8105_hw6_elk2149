@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(janitor)
 library(broom)
+library(purrr)
 ```
 
 ***Problem 1***
@@ -68,7 +69,68 @@ baltimore_male_or = baltimore_logregtidy |>
 baltimore_male_or
 ```
 
-The adjusted odds ratio for a homicide being solved comparing male to female victims, holding age and race constant, was OR = 0.426 (95% CI 0.324, 0.558)
+The adjusted odds ratio for a homicide being solved comparing male to female victims, holding age and race constant, was OR = 0.426 (95% CI 0.324, 0.558).
+
+```{r}
+# now doing it for all cities
+
+city_or_results =
+  df_homicide |>
+  # make sure they're factors
+  mutate(
+    victim_sex  = relevel(factor(victim_sex), ref = "Female"),
+    victim_race = factor(victim_race)
+  ) |>
+ 
+  # nest by city
+  group_by(city_state) |>
+  nest() |>
+  
+  # fit glm for each
+  mutate(
+    fit = map(
+      data,
+      ~ glm(
+          solved ~ victim_age + victim_sex + victim_race,
+          data   = .x,
+          family = binomial()
+        )
+    ),
+    # tidy and get ORs and CI
+    tidy = map(
+      fit,
+      ~ tidy(.x, conf.int = TRUE, conf.level = 0.95, exponentiate = TRUE)
+    )
+  ) |>
+  
+  select(city_state, tidy) |>
+  unnest(tidy) |>
+  
+  # keep only the male vs female contrast
+  filter(term == "victim_sexMale") |>
+  arrange(desc(estimate))
+
+city_or_results
+
+#plotting these findings
+city_or_results |>
+  # ordering cities
+  mutate(city_state = fct_reorder(city_state, estimate)) |>
+  ggplot(aes(x = estimate, y = city_state)) +
+  geom_vline(xintercept = 1) +
+  geom_point() +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +
+  scale_x_log10() +
+  labs(
+    x = "Adjusted odds ratio",
+    y = "City",
+    title = "Adjusted odds ratios for homicide being solved. Male vs female victims, by city."
+  )
+```
+
+The majority of cities have adjusted odds ratios slightly below 1, suggesting homicides involving male victims may be slightly less likely to be solved than those involving female victims. Given that a large proportion of these CIs do not cross 1.0, this odds is likely statistically significant.
 
 ***Problem 2***
+
+
 ***Problem 3***
