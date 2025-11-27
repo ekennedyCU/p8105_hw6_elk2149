@@ -12,6 +12,7 @@ library(janitor)
 library(broom)
 library(purrr)
 library(p8105.datasets)
+library(modelr)
 
 data("weather_df")
 set.seed(1)
@@ -182,3 +183,81 @@ beta_ci
 ```
 
 ***Problem 3***
+```{r}
+
+birth_df = 
+  read_csv("data/birthweight.csv") |>
+  clean_names() |>
+  mutate(
+    babysex = factor(babysex),
+    frace   = factor(frace),
+    mrace   = factor(mrace),
+    malform = factor(malform)
+  )
+```
+
+model based on citation of previous findings: 
+
+Pre-Pregnancy Body Mass Index, Gestational Weight Gain, and Other Maternal Characteristics in Relation to Infant Birth Weight.
+Frederick IO, Williams MA, Sales AE, Martin DP, Killien M.
+Maternal and Child Health Journal. 2008;12(5):557-67. doi:10.1007/s10995-007-0276-2.
+
+maternal pre-pregnancy weight (ppwt)
+maternal BMI (ppbmi)
+gestational weight gain (wtgain)
+gestational age (gaweeks)
+maternal height (mheight)
+
+```{r}
+
+#bwt ~ ppwt + ppbmi + wtgain + gaweeks + mheight
+
+model_maternal = 
+  lm(bwt ~ ppwt + ppbmi + wtgain + gaweeks + mheight, data = birth_df)
+
+birth_df_aug = 
+  birth_df |>
+  add_predictions(model_maternal) |>
+  add_residuals(model_maternal)
+
+birth_df_aug |>
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(se = FALSE) +
+  labs(
+    title = "Residuals vs Fitted Values",
+    x = "Fitted birthweight",
+    y = "Residuals"
+  )
+
+mod_len_ga = lm(bwt ~ blength + gaweeks, data = birth_df)
+
+mod_interact = lm(bwt ~ bhead * blength * babysex, data = birth_df)
+
+cv_df = 
+  crossv_mc(birth_df, 100)
+
+cv_results = cv_df |>
+  mutate(
+    simple_mod = map(train, ~ lm(bwt ~ gaweeks + blength + bhead + smoken + ppbmi, data = .x)),
+    len_ga_mod = map(train, ~ lm(bwt ~ blength + gaweeks, data = .x)),
+    interact_mod = map(train, ~ lm(bwt ~ bhead * blength * babysex, data = .x))
+  )
+
+cv_results = cv_results |>
+  mutate(
+    rmse_simple   = map2_dbl(simple_mod, test, ~ rmse(model = .x, data = .y)),
+    rmse_len_ga   = map2_dbl(len_ga_mod, test, ~ rmse(model = .x, data = .y)),
+    rmse_interact = map2_dbl(interact_mod, test, ~ rmse(model = .x, data = .y))
+  )
+
+cv_results |>
+  summarise(
+    simple   = mean(rmse_simple),
+    len_ga   = mean(rmse_len_ga),
+    interact = mean(rmse_interact)
+  )
+
+
+```
+
