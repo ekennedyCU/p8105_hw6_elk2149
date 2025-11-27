@@ -184,6 +184,7 @@ beta_ci
 
 ***Problem 3***
 ```{r}
+#pull dataset
 
 birth_df = 
   read_csv("data/birthweight.csv") |>
@@ -215,11 +216,15 @@ maternal height (mheight)
 model_maternal = 
   lm(bwt ~ ppwt + ppbmi + wtgain + gaweeks + mheight, data = birth_df)
 
+#add predictions and residuals
+
 birth_df_aug = 
   birth_df |>
   add_predictions(model_maternal) |>
   add_residuals(model_maternal)
 
+
+# plot resituals and compare to fitted values
 birth_df_aug |>
   ggplot(aes(x = pred, y = resid)) +
   geom_point(alpha = 0.3) +
@@ -230,12 +235,18 @@ birth_df_aug |>
     y = "Residuals"
   )
 
+#fit comparison models
+
 mod_len_ga = lm(bwt ~ blength + gaweeks, data = birth_df)
 
 mod_interact = lm(bwt ~ bhead * blength * babysex, data = birth_df)
 
+#create splits
+
 cv_df = 
   crossv_mc(birth_df, 100)
+
+#fit models on training dataset
 
 cv_results = cv_df |>
   mutate(
@@ -244,6 +255,8 @@ cv_results = cv_df |>
     interact_mod = map(train, ~ lm(bwt ~ bhead * blength * babysex, data = .x))
   )
 
+#compute RMSE
+
 cv_results = cv_results |>
   mutate(
     rmse_simple   = map2_dbl(simple_mod, test, ~ rmse(model = .x, data = .y)),
@@ -251,6 +264,8 @@ cv_results = cv_results |>
     rmse_interact = map2_dbl(interact_mod, test, ~ rmse(model = .x, data = .y))
   )
 
+
+#summarize
 cv_results |>
   summarise(
     simple   = mean(rmse_simple),
